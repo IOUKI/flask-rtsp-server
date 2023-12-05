@@ -1,96 +1,357 @@
 FORMAT: 1A
-HOST: https://polls.apiblueprint.org/
+HOST: http://api.akan.me/
 
-# first test
+# Rest API for Asynchronous Operations - Example
 
-給妳各位看的API文件
+This is to demonstrate how to handle asynchronous operations in RESTful API.
+Let's imagine we have a factory which builds cars.
 
-## 早上先來杯黑咖啡 [/today]
+# Allowed HTTP Requests
 
-### 黑咖啡 [POST]
+- `POST` - To create a resource
+- `GET` - Get a resource or list of resources
+- `DELETE` - To delete resource
+- `OPTIONS` - to list options for a resource
+
+# Description Of Usual Server Responses
+
+- `200` OK - the request was successful.
+- `201` Created - the request was successful and a resource was created.
+- `202` Accepted - the request was accepted for processing.
+
+# Cars API Root [/]
+
+This resource does not have any attributes. Instead it offers the initial
+API affordances in the form of the links in the JSON body.
+
+## Retrieve the Entry Point [GET]
+
++ Response 200 (application/json)
+
+        {
+            "cars": "/cars",
+            "car": "/cars/{car_id}"
+            "task": "/tasks/{task_id}",
+            "task status": "/tasks/{task_id}/status"
+        }
+
+# Group Cars
+
+Resources related to cars in the API.
+
+## Car [/cars/{car_id}]
+
+`202` is the default response code API returns for all async calls.
+
+**When we make a request to API it actually creates a task resource and then we track the process using task resource.**
+
+A Car object has the following attributes:
+
++ brand (string) - brand of the car
++ make (string) - make of the car
++ model (string) - model of the car
++ color (string) - color of the car
+
++ Parameters
+    + car_id: 1234 (required, number) - ID of the car in form of an integer
+
+### View a Car Detail [GET]
+
+
++ Response 202 (application/json)
+
+    + Headers
+    
+            Location: /tasks/10001
+            Wait: 600
+
+### Destroy a Car [DELETE]
+
++ Response 202 (application/json)
+
+    + Headers
+    
+            Location: /tasks/10002
+            Wait: 600
+
+### Options for a Car [OPTIONS]
+
++ Response 200 (application/json)
+
+    + Headers
+    
+            Allow: GET,DELETE,OPTIONS
+
+## Cars Collection [/cars]
+    
+### Create a new car asynchronously [POST]
+
+If successful, this request will return `202 - Accepted` response.
+
+API won't wait the resource to be created.
+These are the attributes for a car:
+
++ brand (string) - brand of the car
++ make (string) - make of the car
++ model (string) - model of the car
++ color (string) - color of the car
+
 
 + Request (application/json)
 
         {
-            "飲料": "黑咖啡"
-        }
-        
-+ Response 200 (application/json)
-
-        {
-            "精神": "一級棒LLL"
+            "brand": "Ford",
+            "make": "Mustang",
+            "model": 2014,
+            "color": "Blue"
         }
 
-## Questions Collection [/questions]
++ Response 202 (application/json)
 
-### List All Questions [GET]
+    + Headers
+    
+            Location: /tasks/9999
+            Wait: 600
+            
+
+### Options for Cars [OPTIONS]
 
 + Response 200 (application/json)
+
+    + Headers
+    
+            Allow: POST,OPTIONS
+
+# Group Tasks
+
+## Tasks Collection [/tasks]
+
+### Get all tasks [GET]
+
+Here we can implement filtering to list only runnning tasks etc. For the sake of the example, this lists all tasks.
+
++ Response 202 (application/json)
 
         [
             {
-                "question": "Favourite programming language?",
-                "published_at": "2015-08-05T08:40:51.620Z",
-                "choices": [
-                    {
-                        "choice": "Swift",
-                        "votes": 2048
-                    }, {
-                        "choice": "Python",
-                        "votes": 1024
-                    }, {
-                        "choice": "Objective-C",
-                        "votes": 512
-                    }, {
-                        "choice": "Ruby",
-                        "votes": 256
-                    }
-                ]
+                "task_id": 9999,
+                "status": "active",
+                "progress": 50,
+                "eta": 600,
+                "workflow": {
+                    "wf1": "finished",
+                    "wf2": "in progress",
+                    "wf3": "not started"
+                }            
+            }, {
+                "task_id": 9999,
+                "status: "finished",
+                "progress": 100,
+                "eta": 0,
+                "workflow": {
+                    "wf1": "finished",
+                    "wf2": "finished",
+                    "wf3": "finished"
+                }
+            }, {
+                "task_id": 10001,
+                "status: "finished",
+                "progress": 100,
+                "eta": 0,
+                "workflow": {
+                    "wf1": "done"
+                }
             }
         ]
+        
+### Options for Tasks [OPTIONS]
 
-### Create a New Question [POST]
++ Response 200 (application/json)
 
-You may create your own question using this action. It takes a JSON
-object containing a question and a collection of answers in the
-form of choices.
+    + Headers
+    
+            Allow: GET,OPTIONS
 
-+ Request (application/json)
+## Task API [/tasks/{task_id}]
+
+- `202` response, is for a task that is in progress, `location` header points itself.
+- `201` response, is for a task that is completed, response has `location` header set pointing the resource.
+- `200` response, is for a task which is completed, but didn't create a new resource. Like `GET /cars/99999` request.
+
+
+### Get details of a task [GET]
+
++ Parameters
+    + task_id: 9999 (required, number) - ID of the task created
+
++ Response 202 (application/json)
+
+    + Headers
+    
+            Location: /tasks/9999
+    
+    + Body
+
+            {
+                "task_id": 9999,
+                "status": "active",
+                "progress": 50,
+                "eta": 600,
+                "workflow": {
+                    "wf1": "finished",
+                    "wf2": "in progress",
+                    "wf3": "not started"
+                }            
+                "request": {
+                    "resource": "/cars/",
+                    "verb": "POST",
+                    "header": {},
+                    "body": {
+                        "brand": "Ford",
+                        "make": "Mustang",
+                        "model": 2014,
+                        "color": "Blue"
+                    }
+                },
+                "result": {}
+            }
+
++ Response 201 (application/json)
+
+    + Headers
+        
+            Location: /cars/1234
+
+    + Body
+
+            {
+                "task_id": 9999,
+                "status: "finished",
+                "progress": 100,
+                "eta": 0,
+                "workflow": {
+                    "wf1": "finished",
+                    "wf2": "finished",
+                    "wf3": "finished"
+                }
+                "request": {
+                    "resource": "/cars/",
+                    "verb": "POST",
+                    "header": {},
+                    "body": {
+                        "brand": "Ford",
+                        "make": "Mustang",
+                        "model": 2014,
+                        "color": "Blue"
+                    }
+                },
+                "result": {
+                    "car_id": 1234,
+                    "brand": "Ford",
+                    "make": "Mustang",
+                    "model": 2014,
+                    "color": "Blue"
+                }
+            }
+
+
++ Response 200 (application/json)
 
         {
-            "question": "Favourite programming language?",
-            "choices": [
-                "Swift",
-                "Python",
-                "Objective-C",
-                "Ruby"
-            ]
+            "task_id": 10001,
+            "status: "finished",
+            "progress": 100,
+            "eta": 0,
+            "workflow": {
+                "wf1": "done"
+            }
+            "request": {
+                "resource": "/cars/1234",
+                "verb": "GET",
+                "header": {},
+                "body": {}
+            },
+            "result": {
+                "car_id": 1234,
+                "brand": "Ford",
+                "make": "Mustang",
+                "model": 2014,
+                "color": "Blue"
+            }
+        }
+
+### Options for Task [OPTIONS]
+
++ Response 200 (application/json)
+
+    + Headers
+    
+            Allow: GET,OPTIONS
+
+## Task Status API [/tasks/{task_id}/status]
+
+Provides only status of the task.
+
+### Get Status of a task [GET]
+
++ Parameters
+    + task_id: 9999 (required, number) - ID of the task created
+
++ Response 202 (application/json)
+
+        {
+            "task_id": 9999,
+            "status": "active",
+            "progress": 50,
+            "eta": 600,
+            "workflow": {
+                "wf1": "finished",
+                "wf2": "in progress",
+                "wf3": "not started"
+            }            
         }
 
 + Response 201 (application/json)
 
     + Headers
-
-            Location: /questions/2
+        
+            Location: /cars/1234
 
     + Body
 
             {
-                "question": "Favourite programming language?",
-                "published_at": "2015-08-05T08:40:51.620Z",
-                "choices": [
-                    {
-                        "choice": "Swift",
-                        "votes": 0
-                    }, {
-                        "choice": "Python",
-                        "votes": 0
-                    }, {
-                        "choice": "Objective-C",
-                        "votes": 0
-                    }, {
-                        "choice": "Ruby",
-                        "votes": 0
-                    }
-                ]
+                "task_id": 9999,
+                "status: "finished",
+                "progress": 100,
+                "eta": 0,
+                "workflow": {
+                    "wf1": "finished",
+                    "wf2": "finished",
+                    "wf3": "finished"
+                }
             }
+
+
++ Response 200 (application/json)
+
+        {
+            "task_id": 10001,
+            "status: "finished",
+            "progress": 100,
+            "eta": 0,
+            "workflow": {
+                "wf1": "finished"
+            }
+        }
+        
+### Options for Task Status [OPTIONS]
+
++ Parameters
+    
+    + task_id: 9999 (required, number) - ID of the task created
+    
++ Response 200 (application/json)
+
+    + Headers
+    
+            Allow: GET,OPTIONS
